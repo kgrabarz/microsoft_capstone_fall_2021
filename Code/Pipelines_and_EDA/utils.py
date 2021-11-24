@@ -46,11 +46,55 @@ def convert_to_cat(df, dataset="adult"):
         pass
     
     elif dataset == "compas":
-        pass
+        # remove invalid/null entries
+        df = df[(df['days_b_screening_arrest'] <= 30)
+                & (df['days_b_screening_arrest'] >= -30)
+                & (df['is_recid'] != -1)
+                & (df['c_charge_degree'] != 'O')
+                & (df['score_text'] != 'N/A')]
+        # remove races other than Caucasian or African-American
+        df = df[(df['race']=='Caucasian') | (df['race']=='African-American')]
+
+        # calculate length_of_stay
+        df['c_jail_out'] = pd.to_datetime(df['c_jail_out'])
+        df['c_jail_in'] = pd.to_datetime(df['c_jail_in'])
+        # the number of seconds to the unix epoch start
+        df['length_of_stay'] = (df['c_jail_out'] - df['c_jail_in']).astype(int) / 10**9 
+        # convert seconds into month
+        df['length_of_stay'] /= 60 * 60 * 24 * 31
+        df['length_of_stay'] = df['length_of_stay'].astype(int)
+        df = df.drop_duplicates()
+
+        # convert category data into numeric
+        df['sex_numeric'] = pd.factorize(df['sex'])[0]
+        df['c_charge_degree_numeric'] = pd.factorize(df['c_charge_degree'])[0]
+        race = {1: 'Caucasian', 0: 'African-American'}
+        df["race"] = df["race"].map({v: k for k, v in race.items()})
+        age = {1: 'Greater than 45', 0: '25 - 45', -1: 'Less than 25'}
+        df["age_cat"] = df["age_cat"].map({v: k for k, v in age.items()})
     
     elif dataset == "german":
-        pass
-    
+        df['credit_amount'] /= 500
+        df['credit_amount'] = df['credit_amount'].astype(int)
+        df.loc[df['age_in_years'] <= 25, 'age'] = 0
+        df.loc[df['age_in_years'] > 25, 'age'] = 1
+        df['age'] = df['age'].astype(int)
+        df['duration_in_month'] /= 12
+        df['duration_in_month'] = df['duration_in_month'].astype(int)
+
+        # categorical_features 
+        housing = {2: 'for free', 1: 'own',  0: 'rent'}
+        credit_history = {0: 'no_credits_taken/all_credits_paid_back_duly', 
+                            1: 'all_credits_at_this_bank_paid_back_duly',
+                            2: 'existing_credits_paid_back_duly_till_now', 
+                            3: 'delay_in_paying_off_in_the_past',
+                            4: 'critical_account/other_credits_existing_not_at_this_bank',
+                        }
+
+        df["credit_history"] = df["credit_history"].map({v: k for k, v in credit_history.items()})
+        df["housing"] = df["housing"].map({v: k for k,v in housing.items()})
+        df['purpose'] = pd.factorize(df['purpose'])[0]
+ 
     else:
         raise Exception(f"Dataset {dataset} not recognized.")
 
@@ -111,9 +155,13 @@ def save_synthetic_data(epsilon_vals, train_df, synthesizer="MWEM", quail=False,
     elif dataset == "acs":
         pass
     elif dataset == "compas":
-        pass
+        target = "two_year_recid"
+        all_columns = ['age_cat','priors_count','sex_numeric','juv_fel_count', 'juv_misd_count', 'juv_other_count', 'c_charge_degree_numeric', 'length_of_stay','race','two_year_recid']
+        
     elif dataset == "german":
-        pass
+        target = "credit_risk"
+        all_columns = ['duration_in_month', 'credit_amount', 'installment_rate_in_percentage_of_disposable_income', 'age', 'credit_history', 'housing','status_of_existing_checking_account','present_employment_since', 'purpose', 'credit_risk']
+    
     else:
         raise Exception(f"Dataset {dataset} not recognized.")
 
@@ -159,9 +207,9 @@ def plot_distributions(df, title, dataset="adult"):
     elif dataset == "acs":
         pass
     elif dataset == "compas":
-        pass
+        target = "two_year_recid"
     elif dataset == "german":
-        pass
+        target = "credit_risk"
     else:
         raise Exception(f"Dataset {dataset} not recognized.")
         
@@ -187,9 +235,16 @@ def get_classification_summary(train_df, test_df, classifier="logistic", evaluat
     elif dataset == "acs":
         pass
     elif dataset == "compas":
-        pass
+        target = "two_year_recid"
+        protected_att = "race"
+        priv_class = "White"
+        unpriv_class = "Black"
+        
     elif dataset == "german":
-        pass
+        target = "credit_risk"
+        protected_att = "age"
+        priv_class = ">25"
+        unpriv_class = "<=25"
     else:
         raise Exception(f"Dataset {dataset} not recognized.")
     
@@ -262,9 +317,15 @@ def classification_helper(synthesizer, eps, rep, classifier, test_df, non_priv_t
     elif dataset == "acs":
         pass
     elif dataset == "compas":
-        pass
+        target = "two_year_recid"
+        protected_att = "race"
+        priv_class = "White"
+        unpriv_class = "Black"   
     elif dataset == "german":
-        pass
+        target = "credit_risk"
+        protected_att = "age"
+        priv_class = ">25"
+        unpriv_class = "<=25"
     else:
         raise Exception(f"Dataset {dataset} not recognized.")
     
@@ -457,9 +518,11 @@ def dp_model_classification_helper(eps, classifier, train_df, test_df, dataset="
     elif dataset == "acs":
         pass
     elif dataset == "compas":
-        pass
+        target = "two_year_recid"
+        protected_att = "race"   
     elif dataset == "german":
-        pass
+        target = "credit_risk"
+        protected_att = "age"
     else:
         raise Exception(f"Dataset {dataset} not recognized.")
 
