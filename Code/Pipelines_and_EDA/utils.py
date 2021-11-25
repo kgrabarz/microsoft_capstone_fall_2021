@@ -103,7 +103,8 @@ def convert_to_cat(df, dataset="adult"):
 
 ## DATA SYNTHESIS ##
 
-def get_synthesizer(synthesizer, epsilon):
+def get_synthesizer(synthesizer, epsilon, embedding_dim=128, generator_dim=(256,256), discriminator_dim=(256,256), 
+                    batch_size=500, noise_multiplier=1e-3, sigma=5):
 
     # Instantiate an MWEM synthesizer
     if synthesizer == "MWEM":
@@ -111,10 +112,12 @@ def get_synthesizer(synthesizer, epsilon):
         splits=[], split_factor=2, max_bin_count=400)
 
     elif synthesizer == "DPCTGAN":
-        synth = PytorchDPSynthesizer(epsilon=epsilon, gan=DPCTGAN(), preprocessor=None)
+        synth = PytorchDPSynthesizer(epsilon=epsilon, gan=DPCTGAN(embedding_dim=embedding_dim, generator_dim=generator_dim, 
+                                                                    discriminator_dim=discriminator_dim, batch_size=batch_size, sigma=sigma), preprocessor=None)
         
     elif synthesizer == "PATECTGAN":
-        synth = PytorchDPSynthesizer(epsilon=epsilon, gan=PATECTGAN(), preprocessor=None)
+        synth = PytorchDPSynthesizer(epsilon=epsilon, gan=PATECTGAN(embedding_dim=embedding_dim, generator_dim=generator_dim, 
+                                                                    discriminator_dim=discriminator_dim, batch_size=batch_size, noise_multiplier=noise_multiplier), preprocessor=None)
 
     return synth
 
@@ -144,8 +147,9 @@ def get_quail_synthesizer(synthesizer, classifier, epsilon, eps_split, target):
 
     return quail
 
-def save_synthetic_data(epsilon_vals, train_df, synthesizer="MWEM", quail=False, 
-                        classifier=None, eps_split=None, n_reps=1, dataset="adult"):
+def save_synthetic_data(epsilon_vals, train_df, synthesizer="MWEM", quail=False, classifier=None, eps_split=None, 
+                        n_reps=1, dataset="adult", embedding_dim=128, generator_dim=(256,256), discriminator_dim=(256,256),
+                        batch_size=500, noise_multiplier=1e-3, sigma=5):
     
     # Get a list of all features and target to be passed into categorical_columns
     if dataset == "adult":
@@ -178,7 +182,9 @@ def save_synthetic_data(epsilon_vals, train_df, synthesizer="MWEM", quail=False,
 
             else:
                 # Create a regular synthesizer
-                synth = get_synthesizer(synthesizer, epsilon)
+                synth = get_synthesizer(synthesizer, epsilon, embedding_dim=embedding_dim, generator_dim=generator_dim,
+                                        discriminator_dim=discriminator_dim, batch_size=batch_size, noise_multiplier=noise_multiplier, 
+                                        sigma=sigma)
 
                 if synthesizer == "MWEM":
         
@@ -188,7 +194,7 @@ def save_synthetic_data(epsilon_vals, train_df, synthesizer="MWEM", quail=False,
                 elif synthesizer in ["DPCTGAN", "PATECTGAN"]:
 
                   # Fit synthesizer to the training data
-                  synth.fit(train_df, categorical_columns=all_columns)
+                  synth.fit(train_df, categorical_columns=train_df.columns.tolist())
 
             # Create and save private synthetic data
             train_synth = pd.DataFrame(synth.sample(int(train_df.shape[0])), columns=train_df.columns)
@@ -239,7 +245,6 @@ def get_classification_summary(train_df, test_df, classifier="logistic", evaluat
         protected_att = "race"
         priv_class = "White"
         unpriv_class = "Black"
-        
     elif dataset == "german":
         target = "credit_risk"
         protected_att = "age"
