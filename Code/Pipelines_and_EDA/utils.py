@@ -67,7 +67,6 @@ def convert_to_cat(df, dataset="adult"):
         # Map binary features to 0/1
         df["sex"] = df["sex"].map({"Female":0, "Male":1})
         df["label"] = df["label"].map({"<=50K":0, ">50K":1})
-        df["over_under_50k"] = df["label"]
     
     elif dataset == "compas":
         # remove invalid/null entries
