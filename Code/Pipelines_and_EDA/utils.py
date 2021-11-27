@@ -43,7 +43,31 @@ def convert_to_cat(df, dataset="adult"):
         df["label"] = df["label"].map({"<=50K":0, ">50K":1})
         
     elif dataset == "acs":
-        pass
+        
+        # Remove unneeded features
+        df = df.drop(["native_country", "Unnamed: 0"], axis=1)
+
+        # Remove missing values
+        df = df[~df.eq("?").any(1)]
+        
+        # Bin continuous columns
+        age_bins = [0, 25, 35, 45, 60, np.inf]
+        age_labels = ["<25", "25-35", "35-45", "45-60", "60+"]
+        df["age"] = pd.cut(df["age"], age_bins, labels=age_labels)
+        
+        hours_week_bins = [0, 35, 45, 60, np.inf]
+        hours_week_labels = ["<35", "35-45", "45-60", "60+"]
+        df["hours_week"] = pd.cut(df["hours_week"], hours_week_bins, labels=hours_week_labels)
+        
+        # Discretize features
+        for col in df.columns:
+            if col not in ["label", "sex"]:
+                df[col] = pd.factorize(df[col])[0]
+        
+        # Map binary features to 0/1
+        df["sex"] = df["sex"].map({"Female":0, "Male":1})
+        df["label"] = df["label"].map({"<=50K":0, ">50K":1})
+        df["over_under_50k"] = df["label"]
     
     elif dataset == "compas":
         # remove invalid/null entries
@@ -156,8 +180,12 @@ def save_synthetic_data(epsilon_vals, train_df, synthesizer="MWEM", quail=False,
         target = "label"
         all_columns = ["age", "workclass", "education", "education_num", "occupation",
                                "relationship", "race", "sex", "hours_week", "label"]
+        
     elif dataset == "acs":
-        pass
+        target = "label"
+        all_columns = ["age", "workclass", "education", "occupation", "marital",
+                               "relationship", "race", "sex", "hours_week", "label"] 
+    
     elif dataset == "compas":
         target = "two_year_recid"
         all_columns = ['age_cat','priors_count','sex_numeric','juv_fel_count', 'juv_misd_count', 'juv_other_count', 'c_charge_degree_numeric', 'length_of_stay','race','two_year_recid']
@@ -211,7 +239,7 @@ def plot_distributions(df, title, dataset="adult"):
     if dataset == "adult":
         target = "label"
     elif dataset == "acs":
-        pass
+        target = "label"
     elif dataset == "compas":
         target = "two_year_recid"
     elif dataset == "german":
@@ -239,7 +267,10 @@ def get_classification_summary(train_df, test_df, classifier="logistic", evaluat
         priv_class = "Male"
         unpriv_class = "Female"
     elif dataset == "acs":
-        pass
+        target = "label"
+        protected_att = "sex"
+        priv_class = "Male"
+        unpriv_class = "Female"
     elif dataset == "compas":
         target = "two_year_recid"
         protected_att = "race"
@@ -320,7 +351,10 @@ def classification_helper(synthesizer, eps, rep, classifier, test_df, non_priv_t
         priv_class = "Male"
         unpriv_class = "Female"
     elif dataset == "acs":
-        pass
+        target = "label"
+        protected_att = "sex"
+        priv_class = "Male"
+        unpriv_class = "Female"
     elif dataset == "compas":
         target = "two_year_recid"
         protected_att = "race"
@@ -521,7 +555,8 @@ def dp_model_classification_helper(eps, classifier, train_df, test_df, dataset="
         target = "label"
         protected_att = "sex"
     elif dataset == "acs":
-        pass
+        target = "label"
+        protected_att = "sex"
     elif dataset == "compas":
         target = "two_year_recid"
         protected_att = "race"   
