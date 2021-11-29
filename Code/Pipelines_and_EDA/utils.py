@@ -43,7 +43,30 @@ def convert_to_cat(df, dataset="adult"):
         df["label"] = df["label"].map({"<=50K":0, ">50K":1})
         
     elif dataset == "acs":
-        pass
+        
+        # Remove unneeded features
+        df = df.drop(["native_country", "Unnamed: 0"], axis=1)
+
+        # Remove missing values
+        df = df[~df.eq("?").any(1)]
+        
+        # Bin continuous columns
+        age_bins = [0, 25, 35, 45, 60, np.inf]
+        age_labels = ["<25", "25-35", "35-45", "45-60", "60+"]
+        df["age"] = pd.cut(df["age"], age_bins, labels=age_labels)
+        
+        hours_week_bins = [0, 35, 45, 60, np.inf]
+        hours_week_labels = ["<35", "35-45", "45-60", "60+"]
+        df["hours_week"] = pd.cut(df["hours_week"], hours_week_bins, labels=hours_week_labels)
+        
+        # Discretize features
+        for col in df.columns:
+            if col not in ["label", "sex"]:
+                df[col] = pd.factorize(df[col])[0]
+        
+        # Map binary features to 0/1
+        df["sex"] = df["sex"].map({"Female":0, "Male":1})
+        df["label"] = df["label"].map({"<=50K":0, ">50K":1})
     
     elif dataset == "compas":
         # remove invalid/null entries
@@ -72,6 +95,8 @@ def convert_to_cat(df, dataset="adult"):
         df["race"] = df["race"].map({v: k for k, v in race.items()})
         age = {1: 'Greater than 45', 0: '25 - 45', -1: 'Less than 25'}
         df["age_cat"] = df["age_cat"].map({v: k for k, v in age.items()})
+        
+        df = df[['age_cat','priors_count','sex_numeric','juv_fel_count', 'juv_misd_count', 'juv_other_count', 'c_charge_degree_numeric', 'length_of_stay','race','two_year_recid']]
     
     elif dataset == "german":
         df['credit_amount'] /= 500
@@ -94,6 +119,8 @@ def convert_to_cat(df, dataset="adult"):
         df["credit_history"] = df["credit_history"].map({v: k for k, v in credit_history.items()})
         df["housing"] = df["housing"].map({v: k for k,v in housing.items()})
         df['purpose'] = pd.factorize(df['purpose'])[0]
+        
+        df = df[['duration_in_month', 'credit_amount', 'installment_rate_in_percentage_of_disposable_income', 'age', 'credit_history', 'housing','status_of_existing_checking_account','present_employment_since', 'purpose', 'credit_risk']]
  
     else:
         raise Exception(f"Dataset {dataset} not recognized.")
@@ -105,7 +132,7 @@ def one_hot_encode(cat_df, dataset="adult"):
     if dataset == "adult":
         non_binary_cols = ["age", "workclass", "education", "education_num", "occupation", "relationship", "race", "hours_week"]
     elif dataset == "acs":
-        pass
+        non_binary_cols = ["age", "workclass", "education", "education_num", "occupation", "relationship", "race", "hours_week"]
     elif dataset == "compas":
         pass
     elif dataset == "german":
@@ -173,16 +200,22 @@ def save_synthetic_data(epsilon_vals, train_df, synthesizer="MWEM", quail=False,
     if dataset == "adult":
         target = "label"
         all_columns = ["age", "workclass", "education", "education_num", "occupation",
-                       "relationship", "race", "sex", "hours_week", "label"]
+                               "relationship", "race", "sex", "hours_week", "label"]
+        
     elif dataset == "acs":
-        pass
+        target = "label"
+        all_columns = ["age", "workclass", "education", "occupation", "marital",
+                               "relationship", "race", "sex", "hours_week", "label"] 
+    
     elif dataset == "compas":
         target = "two_year_recid"
-        all_columns = ['age_cat','priors_count','sex_numeric','juv_fel_count', 'juv_misd_count', 'juv_other_count', 'c_charge_degree_numeric', 'length_of_stay','race','two_year_recid']
+        all_columns = ['age_cat','priors_count','sex_numeric','juv_fel_count', 'juv_misd_count', 
+                       'juv_other_count', 'c_charge_degree_numeric', 'length_of_stay','race','two_year_recid']
         
     elif dataset == "german":
         target = "credit_risk"
-        all_columns = ['duration_in_month', 'credit_amount', 'installment_rate_in_percentage_of_disposable_income', 'age', 'credit_history', 'housing','status_of_existing_checking_account','present_employment_since', 'purpose', 'credit_risk']
+        all_columns = ['duration_in_month', 'credit_amount', 'installment_rate_in_percentage_of_disposable_income', 
+                       'age', 'credit_history', 'housing','status_of_existing_checking_account','present_employment_since', 'purpose', 'credit_risk']
     
     else:
         raise Exception(f"Dataset {dataset} not recognized.")
@@ -229,7 +262,7 @@ def plot_distributions(df, title, dataset="adult"):
     if dataset == "adult":
         target = "label"
     elif dataset == "acs":
-        pass
+        target = "label"
     elif dataset == "compas":
         target = "two_year_recid"
     elif dataset == "german":
@@ -257,7 +290,10 @@ def get_classification_summary(train_df, test_df, classifier="logistic", evaluat
         priv_class = "Male"
         unpriv_class = "Female"
     elif dataset == "acs":
-        pass
+        target = "label"
+        protected_att = "sex"
+        priv_class = "Male"
+        unpriv_class = "Female"
     elif dataset == "compas":
         target = "two_year_recid"
         protected_att = "race"
@@ -351,7 +387,10 @@ def classification_helper(synthesizer, eps, rep, classifier, test_df, non_priv_t
         priv_class = "Male"
         unpriv_class = "Female"
     elif dataset == "acs":
-        pass
+        target = "label"
+        protected_att = "sex"
+        priv_class = "Male"
+        unpriv_class = "Female"
     elif dataset == "compas":
         target = "two_year_recid"
         protected_att = "race"
