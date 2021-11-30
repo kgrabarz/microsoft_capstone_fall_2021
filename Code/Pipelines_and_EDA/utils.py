@@ -621,7 +621,8 @@ def dp_model_classification_helper(eps, classifier, train_df, test_df, dataset="
         target = "label"
         protected_att = "sex"
     elif dataset == "acs":
-        pass
+        target = "label"
+        protected_att = "sex
     elif dataset == "compas":
         target = "two_year_recid"
         protected_att = "race"   
