@@ -54,7 +54,6 @@ def convert_to_cat(df, dataset="adult"):
         age_bins = [0, 25, 35, 45, 60, np.inf]
         age_labels = ["<25", "25-35", "35-45", "45-60", "60+"]
         df["age"] = pd.cut(df["age"], age_bins, labels=age_labels)
-        
         hours_week_bins = [0, 35, 45, 60, np.inf]
         hours_week_labels = ["<35", "35-45", "45-60", "60+"]
         df["hours_week"] = pd.cut(df["hours_week"], hours_week_bins, labels=hours_week_labels)
@@ -69,34 +68,47 @@ def convert_to_cat(df, dataset="adult"):
         df["label"] = df["label"].map({"<=50K":0, ">50K":1})
     
     elif dataset == "compas":
-        # remove invalid/null entries
+        
+        # Remove invalid/null entries
         df = df[(df['days_b_screening_arrest'] <= 30)
                 & (df['days_b_screening_arrest'] >= -30)
                 & (df['is_recid'] != -1)
                 & (df['c_charge_degree'] != 'O')
                 & (df['score_text'] != 'N/A')]
-        # remove races other than Caucasian or African-American
+        
+        # Remove races other than Caucasian or African-American
         df = df[(df['race']=='Caucasian') | (df['race']=='African-American')]
 
-        # calculate length_of_stay
+        # Calculate length_of_stay (convert into months)
         df['c_jail_out'] = pd.to_datetime(df['c_jail_out'])
-        df['c_jail_in'] = pd.to_datetime(df['c_jail_in'])
-        # the number of seconds to the unix epoch start
+        df['c_jail_in'] = pd.to_datetime(df['c_jail_in'])        
         df['length_of_stay'] = (df['c_jail_out'] - df['c_jail_in']).astype(int) / 10**9 
-        # convert seconds into month
         df['length_of_stay'] /= 60 * 60 * 24 * 31
-        df['length_of_stay'] = df['length_of_stay'].astype(int)
         df = df.drop_duplicates()
-
-        # convert category data into numeric
-        df['sex_numeric'] = pd.factorize(df['sex'])[0]
-        df['c_charge_degree_numeric'] = pd.factorize(df['c_charge_degree'])[0]
-        race = {1: 'Caucasian', 0: 'African-American'}
-        df["race"] = df["race"].map({v: k for k, v in race.items()})
-        age = {1: 'Greater than 45', 0: '25 - 45', -1: 'Less than 25'}
-        df["age_cat"] = df["age_cat"].map({v: k for k, v in age.items()})
         
-        df = df[['age_cat','priors_count','sex_numeric','juv_fel_count', 'juv_misd_count', 'juv_other_count', 'c_charge_degree_numeric', 'length_of_stay','race','two_year_recid']]
+        # Bin the continuous columns
+        age_bins = [0, 25, 35, 45, 60, np.inf]
+        age_labels = ["<25", "25-35", "35-45", "45-60", "60+"]
+        df["age"] = pd.cut(df["age"], age_bins, labels=age_labels)
+        priors_count_bins = [-1, 3, 6, 10, 16, np.inf]
+        prios_counts_labels = ["<3", "3-6", "6-10", "10-16", "16+"]
+        df["priors_count"] = pd.cut(df["priors_count"], priors_count_bins, labels=prios_counts_labels)
+        length_of_stay_bins = [-1, 1, 2, 5, 10, np.inf]
+        length_of_stay_labels = ["<1", "1-2", "2-5", "5-10", "10+"]
+        df["length_of_stay"] = pd.cut(df["length_of_stay"], length_of_stay_bins, labels=length_of_stay_labels)
+        
+        # Discretize features
+        for col in df.columns:
+            if col not in ["sex", "c_charge_degree", "race"]:
+                df[col] = pd.factorize(df[col])[0]
+
+        # Map binary features to 0/1
+        df["sex"] = df["sex"].map({"Female":0, "Male":1})
+        df["c_charge_degree"] = df["c_charge_degree"].map({"F":0, "M":1})
+        df["race"] = df["race"].map({"African-American":0, "Caucasian":1})
+        
+        df = df[['age', 'priors_count', 'sex','juv_fel_count', 'juv_misd_count', 'juv_other_count', 
+                 'c_charge_degree', 'length_of_stay','race','two_year_recid']]
     
     elif dataset == "german":
         df['credit_amount'] /= 500
@@ -134,7 +146,7 @@ def one_hot_encode(cat_df, dataset="adult"):
     elif dataset == "acs":
         non_binary_cols = ["age", "workclass", "education", "education_num", "occupation", "relationship", "race", "hours_week"]
     elif dataset == "compas":
-        pass
+        non_binary_cols = ["age", "priors_count", "juv_fel_count", "juv_misd_count", "juv_other_count", "length_of_stay"]
     elif dataset == "german":
         pass
     else:
@@ -209,8 +221,8 @@ def save_synthetic_data(epsilon_vals, train_df, synthesizer="MWEM", quail=False,
     
     elif dataset == "compas":
         target = "two_year_recid"
-        all_columns = ['age_cat','priors_count','sex_numeric','juv_fel_count', 'juv_misd_count', 
-                       'juv_other_count', 'c_charge_degree_numeric', 'length_of_stay','race','two_year_recid']
+        all_columns = ['age','priors_count','sex','juv_fel_count', 'juv_misd_count', 
+                       'juv_other_count', 'c_charge_degree', 'length_of_stay','race','two_year_recid']
         
     elif dataset == "german":
         target = "credit_risk"
