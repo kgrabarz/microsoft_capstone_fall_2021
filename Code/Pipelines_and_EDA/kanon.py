@@ -99,10 +99,21 @@ def build_anonymized_dataset(df, partitions, feature_columns, sensitive_column, 
             rows.append(values.copy())
     return pd.DataFrame(rows)
 
-def drop_grouped_rows(kanon_df):
+def drop_grouped_rows(kanon_df, dataset="adult"):
 
+    if dataset == "adult":
+        target = "label"
+    elif dataset == "acs":
+        target = "label"
+    elif dataset == "compas":
+        target = "two_year_recid"
+    elif dataset == "german":
+        target = "credit_risk"
+    else:
+        raise Exception(f"Dataset {dataset} not recognized.")
+                  
     # Separate X and y
-    kanon_X, kanon_y = kanon_df.drop(["label", "count"], axis=1), kanon_df["label"]
+    kanon_X, kanon_y = kanon_df.drop([target, "count"], axis=1), kanon_df[target]
 
     # Helper function to remove grouped rows
     def process_partitions(row, i):
@@ -117,7 +128,7 @@ def drop_grouped_rows(kanon_df):
         kanon_df[col] = kanon_X.apply(lambda row: process_partitions(row, i), axis=1)
 
     # Add the label back and drop null values
-    kanon_df["label"] = kanon_y
+    kanon_df[target] = kanon_y
     kanon_df = kanon_df.dropna()
 
     # Convert all columns to integers
