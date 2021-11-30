@@ -144,7 +144,7 @@ def one_hot_encode(cat_df, dataset="adult"):
     if dataset == "adult":
         non_binary_cols = ["age", "workclass", "education", "education_num", "occupation", "relationship", "race", "hours_week"]
     elif dataset == "acs":
-        non_binary_cols = ["age", "workclass", "education", "education_num", "occupation", "relationship", "race", "hours_week"]
+        non_binary_cols = ["age", "workclass", "education", "occupation", "relationship", "race", "hours_week", "marital"]
     elif dataset == "compas":
         non_binary_cols = ["age", "priors_count", "juv_fel_count", "juv_misd_count", "juv_other_count", "length_of_stay"]
     elif dataset == "german":
