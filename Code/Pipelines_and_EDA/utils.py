@@ -111,28 +111,25 @@ def convert_to_cat(df, dataset="adult"):
                  'c_charge_degree', 'length_of_stay','race','two_year_recid']]
     
     elif dataset == "german":
-        df['credit_amount'] /= 500
-        df['credit_amount'] = df['credit_amount'].astype(int)
-        df.loc[df['age_in_years'] <= 25, 'age'] = 0
-        df.loc[df['age_in_years'] > 25, 'age'] = 1
-        df['age'] = df['age'].astype(int)
+        
+        # Convert age to a binary variable
+        df.loc[df["age_in_years"] <= 25, "age_in_years"] = 0
+        df.loc[df["age_in_years"] > 25, "age_in_years"] = 1
+        df = df.rename(columns={"age_in_years": "age"})
+        
+        # Bin the continuous columns
         df['duration_in_month'] /= 12
         df['duration_in_month'] = df['duration_in_month'].astype(int)
-
-        # categorical_features 
-        housing = {2: 'for free', 1: 'own',  0: 'rent'}
-        credit_history = {0: 'no_credits_taken/all_credits_paid_back_duly', 
-                            1: 'all_credits_at_this_bank_paid_back_duly',
-                            2: 'existing_credits_paid_back_duly_till_now', 
-                            3: 'delay_in_paying_off_in_the_past',
-                            4: 'critical_account/other_credits_existing_not_at_this_bank',
-                        }
-
-        df["credit_history"] = df["credit_history"].map({v: k for k, v in credit_history.items()})
-        df["housing"] = df["housing"].map({v: k for k,v in housing.items()})
-        df['purpose'] = pd.factorize(df['purpose'])[0]
+        df = df.rename(columns={"duration_in_month": "duration_in_year"})
+        credit_amount_bins = [-1, 2000, 3500, 6500, 10000, np.inf]
+        credit_amount_labels = ["<2000", "2000-3500", "3500-6500", "6500-10000", "10000+"]
+        df["credit_amount"] = pd.cut(df["credit_amount"], credit_amount_bins, labels=credit_amount_labels)
         
-        df = df[['duration_in_month', 'credit_amount', 'installment_rate_in_percentage_of_disposable_income', 'age', 'credit_history', 'housing','status_of_existing_checking_account','present_employment_since', 'purpose', 'credit_risk']]
+        # Discretize features
+        for col in ["credit_amount", "credit_history", "housing", "purpose"]:
+            df[col] = pd.factorize(df[col])[0]
+        
+        df = df[['duration_in_year', 'credit_amount', 'installment_rate_in_percentage_of_disposable_income', 'age', 'credit_history', 'housing','status_of_existing_checking_account','present_employment_since', 'purpose', 'credit_risk']]
  
     else:
         raise Exception(f"Dataset {dataset} not recognized.")
@@ -148,7 +145,7 @@ def one_hot_encode(cat_df, dataset="adult"):
     elif dataset == "compas":
         non_binary_cols = ["age", "priors_count", "juv_fel_count", "juv_misd_count", "juv_other_count", "length_of_stay"]
     elif dataset == "german":
-        pass
+        non_binary_cols = ['duration_in_year', 'credit_amount', 'installment_rate_in_percentage_of_disposable_income', 'credit_history', 'housing','status_of_existing_checking_account','present_employment_since', 'purpose']
     else:
         raise Exception(f"Dataset {dataset} not recognized.")
         
@@ -226,7 +223,7 @@ def save_synthetic_data(epsilon_vals, train_df, synthesizer="MWEM", quail=False,
         
     elif dataset == "german":
         target = "credit_risk"
-        all_columns = ['duration_in_month', 'credit_amount', 'installment_rate_in_percentage_of_disposable_income', 
+        all_columns = ['duration_in_year', 'credit_amount', 'installment_rate_in_percentage_of_disposable_income', 
                        'age', 'credit_history', 'housing','status_of_existing_checking_account','present_employment_since', 'purpose', 'credit_risk']
     
     else:
@@ -621,8 +618,7 @@ def dp_model_classification_helper(eps, classifier, train_df, test_df, dataset="
         target = "label"
         protected_att = "sex"
     elif dataset == "acs":
-        target = "label"
-        protected_att = "sex
+        pass
     elif dataset == "compas":
         target = "two_year_recid"
         protected_att = "race"   
