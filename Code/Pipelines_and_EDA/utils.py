@@ -265,7 +265,7 @@ def save_synthetic_data(epsilon_vals, train_df, synthesizer="MWEM", quail=False,
                 
             print(f"Completed eps={epsilon}, rep={i+1}.")
             
-def plot_distributions(df, title, dataset="adult"):
+def plot_distributions(df, title, dataset="adult", savefig=False):
     
     # Get name of target
     if dataset == "adult":
@@ -286,6 +286,8 @@ def plot_distributions(df, title, dataset="adult"):
             g = sns.histplot(data=df, x=col, hue=target, multiple="stack", ax=ax[i], discrete=True)
     fig.suptitle(title, size=20)
     fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    if savefig:
+        plt.savefig(f"{dataset}_distributions.png", dpi=300, bbox_inches="tight")
     
             
 ## BINARY CLASSIFICATION ##
@@ -555,7 +557,7 @@ def get_plot_metrics(synthesizer, epsilon_list, nreps, classifier, test_df, f1_m
         
     return tpr_diff_median_list, fpr_diff_median_list, f1_score_metrics, tpr_diff_std_list, fpr_diff_std_list, f1_score_std_list
         
-def get_epsilon_plots(synthesizer_list, epsilon_list, nreps, classifier, test_df, f1_metric="median", non_priv_train=None, one_hot_encode_train=False, dataset="adult", results_dir=""):
+def get_epsilon_plots(synthesizer_list, epsilon_list, nreps, classifier, test_df, f1_metric="median", non_priv_train=None, one_hot_encode_train=False, dataset="adult", results_dir="", savefig=False):
     """ return subplot with three plots showing graphs of TPR_diff, FPR_diff, F1_score acros epsilons for each synthesizer """
     
     # Get name for plotting
@@ -571,41 +573,56 @@ def get_epsilon_plots(synthesizer_list, epsilon_list, nreps, classifier, test_df
         raise Exception(f"Dataset {dataset} not recognized.")
     
     # Initialize subplots
-    fig, ax = plt.subplots(1, 3, figsize=(16,5))
+    if savefig:
+        fig, ax = plt.subplots(1, 3, figsize=(16,3.7))
+    else:
+        fig, ax = plt.subplots(1, 3, figsize=(16,5))
+    
+    # Add the non-private results to the plots
+    if non_priv_train is not None:
+        non_priv_tpr_diff, non_priv_fpr_diff, non_priv_f1_score = classification_helper(None, None, None, classifier=classifier, test_df=test_df, non_priv_train=non_priv_train, one_hot_encode_train=one_hot_encode_train, dataset=dataset)
+        ax[0].hlines(non_priv_tpr_diff, xmin=epsilon_list[0], xmax=epsilon_list[-1], linestyles="--", label="Non-private data", color="black")
+        ax[1].hlines(non_priv_fpr_diff, xmin=epsilon_list[0], xmax=epsilon_list[-1], linestyles="--", label="Non-private data", color="black")
+        ax[2].hlines(non_priv_f1_score, xmin=epsilon_list[0], xmax=epsilon_list[-1], linestyles="--", label="Non-private data", color="black")
     
     # Loop through the synthesizers
     for synth in synthesizer_list:
         
         # Get all classification metrics
+        if synth == "QUAIL_PATECTGAN":
+            epsilon_list = epsilon_list[1:]
         tpr_diff_median_list, fpr_diff_median_list, f1_score_metrics, tpr_diff_std_list, fpr_diff_std_list, f1_score_std_list \
         =  get_plot_metrics(synthesizer=synth, epsilon_list=epsilon_list, nreps=nreps, classifier=classifier, test_df=test_df, f1_metric=f1_metric, 
                             one_hot_encode_train=one_hot_encode_train, dataset=dataset, results_dir=results_dir)
         
         # Plot the metrics with error bars
-        ax[0].errorbar(epsilon_list, tpr_diff_median_list, tpr_diff_std_list, label=synth)
-        ax[1].errorbar(epsilon_list, fpr_diff_median_list, fpr_diff_std_list, label=synth)
-        ax[2].errorbar(epsilon_list, f1_score_metrics, f1_score_std_list, label=synth)
-        
-    # Add the non-private results to the plots
-    if non_priv_train is not None:
-        non_priv_tpr_diff, non_priv_fpr_diff, non_priv_f1_score = classification_helper(None, None, None, classifier=classifier, test_df=test_df, non_priv_train=non_priv_train, one_hot_encode_train=one_hot_encode_train, dataset=dataset)
-        ax[0].hlines(non_priv_tpr_diff, xmin=epsilon_list[0], xmax=epsilon_list[-1], linestyles="--", label="Non-private data")
-        ax[1].hlines(non_priv_fpr_diff, xmin=epsilon_list[0], xmax=epsilon_list[-1], linestyles="--", label="Non-private data")
-        ax[2].hlines(non_priv_f1_score, xmin=epsilon_list[0], xmax=epsilon_list[-1], linestyles="--", label="Non-private data")
+        ax[0].errorbar(epsilon_list, tpr_diff_median_list, tpr_diff_std_list, label=synth, alpha=0.7)
+        ax[1].errorbar(epsilon_list, fpr_diff_median_list, fpr_diff_std_list, label=synth, alpha=0.7)
+        ax[2].errorbar(epsilon_list, f1_score_metrics, f1_score_std_list, label=synth, alpha=0.7)
         
     # Plotting details
-    for i in range(3):
-        ax[i].set_xlabel("Privacy budget")
-        ax[i].legend()
-    ax[0].set_ylabel("Equalized odds distance ($y=1$)")
-    ax[1].set_ylabel("Equalized odds distance ($y=0$)")
-    ax[2].set_ylabel("F1-score")
-    if classifier == "logistic":
-        title = f"{title} classification summary (logistic regression)"
-    elif classifier == "forest":
-        title = f"{title} classification summary (random forest)"
-    fig.suptitle(title, size=20)
-    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    if savefig:
+        for i in range(3):
+            ax[i].set_xlabel("Privacy budget $\epsilon$")
+            ax[i].legend(loc="upper center", bbox_to_anchor=(0.5, 1.25),
+                         fancybox=True, shadow=True, ncol=2)
+        ax[0].set_ylabel("Equalized odds distance ($y=1$)")
+        ax[1].set_ylabel("Equalized odds distance ($y=0$)")
+        ax[2].set_ylabel("F1-score")
+        plt.savefig(results_dir+f"{dataset}_{classifier}.png", dpi=300, bbox_inches="tight")
+    else:
+        for i in range(3):
+            ax[i].set_xlabel("Privacy budget $\epsilon$")
+            ax[i].legend(loc="lower left")
+        ax[0].set_ylabel("Equalized odds distance ($y=1$)")
+        ax[1].set_ylabel("Equalized odds distance ($y=0$)")
+        ax[2].set_ylabel("F1-score")
+        if classifier == "logistic":
+            title = f"{title} classification summary (logistic regression)"
+        elif classifier == "forest":
+            title = f"{title} classification summary (random forest)"
+        fig.suptitle(title, size=20)
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
     
 ## DP MODEL CLASSIFICATION ##
