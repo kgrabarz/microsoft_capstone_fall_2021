@@ -10,3 +10,12 @@ This repo contains code and materials for our capstone project investigating the
   *  Adult-Results.ipynb: Notebook that contains results of the Adult dataset
 
   *  COMPAS-Results.ipynb: Notebook that contains results of the COMPAS dataset
+  
+  *  German-Credit-Results.ipynb: Notebook that contains results of German Credit dataset
+
+* 4 Utility helper function in Python (note: they are automatically imported in the notebooks) 
+  
+  * data_prep.py
+  * dp_model_metrics.py:
+  * dp_synthesis.py
+  * classification_metrics.py
