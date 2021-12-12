@@ -26,5 +26,11 @@ This repo contains code and materials for our capstone project investigating the
    `git clone https://github.com/opendp/smartnoise-sdk.git`
    
 2. Go to synth folder
+
    `cd synth`
-   
+
+3. Install the package using setup.py
+
+   `python setup.py build`
+    
+   `python setup.py install`
