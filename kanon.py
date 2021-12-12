@@ -1,6 +1,12 @@
 import numpy as np
 import pandas as pd
 
+'''
+Methods to implement k-anonymity via record suppression.
+
+Credit to Nuclearstar: https://github.com/Nuclearstar/K-Anonymity
+'''
+
 def convert_to_str(cat_df):
     cat_df_copy = cat_df.copy()
     for col in cat_df.columns:
