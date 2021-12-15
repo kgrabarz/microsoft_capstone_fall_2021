@@ -16,8 +16,8 @@ This repo contains code and materials for our capstone project investigating the
   * `dp_model_metrics.py`: functions to calculate fairness and accuracy metrics for DP classification models
   * `dp_synthesis.py`: functions used to train synthesizers and generate DP synthetic data
   * `classification_metrics.py`: functions to calculate fairness and accuracy of classification models trained on DP synthetic data 
-
-* `kanon.py`: implementation of k-anonymity, credit to [Nuclearstar](https://github.com/Nuclearstar/K-Anonymity).
+  * `preprocessing.py`: multi-label undersampling method to pre-process synthesizer training data and mitigate class imbalance
+  * `kanon.py`: implementation of k-anonymity, credit to [Nuclearstar](https://github.com/Nuclearstar/K-Anonymity).
 
 ## How to install `smartnoise-sdk` package:
 
